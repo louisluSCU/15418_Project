@@ -1,17 +1,19 @@
 #include "lockfree_bst.h"
 #include <stdint.h>
+#include <stdio.h>
 
 #define FLAG_MASK 3UL
 #define NULL_MASK 1UL
 
-#define SET_FLAG(op, flag)  ((Operation*) ((uintptr_t)op |= flag))
+#define SET_FLAG(op, flag)  ((Operation*) ((uintptr_t)op | flag))
 #define GET_FLAG(op)        ((uintptr_t)op & FLAG_MASK)
 #define DE_FLAG(op)         ((Operation*) (((uintptr_t)op >> 2) << 2))
 
 #define SET_NULL(node)  ((Node*) ((uintptr_t) node | NULL_MASK))
-#define IS_NULL(node)   ((((uintptr_t) node & NULL_MASK) == 1UL)
+#define IS_NULL(node)   (((uintptr_t) node & NULL_MASK) == 1UL)
 
 #define CAS(obj, expected, desired) true
+#define VCAS(obj, expected, desired) desired
 
 enum op_flag {
     NONE, TOMB, CHILDCAS, RELOCATE
@@ -21,6 +23,11 @@ enum find_ret {
     FOUND, NOTFOUND_L, NOTFOUND_R, ABORT
 };
 
+enum relocate_state {
+    ONGOING, SUCCEED, FAILED
+};
+
+Node::Node() : key(0) {}
 Node::Node(int k) : key(k) {}
 
 ChildCASOp::ChildCASOp(bool is_left, Node* old, Node* new_n) {
@@ -30,10 +37,15 @@ ChildCASOp::ChildCASOp(bool is_left, Node* old, Node* new_n) {
 }
 
 RelocateOp::RelocateOp(Node* curr, Operation* curr_op, int curr_key, int new_key) {
+    state = ONGOING;
     dest = curr;
     dest_op = curr_op;
     key_to_remove = curr_key;
     key_to_put = new_key;
+}
+
+BST::BST() {
+    root.key = -1;
 }
 
 int BST::find(int k, Node*& parent, Operation*& parent_op, Node*& curr,
@@ -82,13 +94,14 @@ int BST::find(int k, Node*& parent, Operation*& parent_op, Node*& curr,
             }
             else {
                 result = FOUND;
-                return result;
+                break;
             }
         }
 
-        // When target not found
-        if (last_right_op == last_right->op || curr_op == curr->op)
-            break;
+        // Make sure no update on last right node that might invalidate current search result
+        if (result == FOUND || last_right_op == last_right->op) break;
+        // Make sure curr has not been changed between reading op and reading its key
+        if (curr_op == curr->op) break;
     }
 
     return result;
@@ -139,10 +152,12 @@ bool BST::remove(int k) {
         }
         // Target node has two children
         else {
+            // Restart the search from curr to find the next largest key
             if (find(k, parent, parent_op, replace, replace_op, curr) == ABORT || (curr->op != curr_op))
                 continue;
             relocate_op = new RelocateOp(curr, curr_op, k, replace->key);
-            if (CAS(&replace_op, replace_op, SET_FLAG(relocate_op, RELOCATE))) {
+            // Ensure node to remove cannot be modified by others
+            if (CAS(&replace->op, replace_op, SET_FLAG(relocate_op, RELOCATE))) {
                 if (helpRelocate(relocate_op, parent, parent_op, replace))
                     return true;
             }
@@ -159,6 +174,7 @@ void BST::help(Node* parent, Operation* parent_op, Node* curr, Operation* curr_o
         helpMarked(parent, parent_op, curr);
 }
 
+/* Physically remove node from the tree */
 void BST::helpMarked(Node* parent, Operation* parent_op, Node* curr) {
     Node* tmp;
     if (IS_NULL(curr->left)) {
@@ -169,14 +185,62 @@ void BST::helpMarked(Node* parent, Operation* parent_op, Node* curr) {
 
     bool is_left = curr == parent->left;
     Operation* cas_op = new ChildCASOp(is_left, curr, tmp);
+
+    // Physical removal by updating parent node
     if (CAS(&parent->op, parent_op, SET_FLAG(cas_op, CHILDCAS))) {
         helpChildCAS(cas_op, parent);
     }
 }
 
+/* Physically add new node to the tree */
 void BST::helpChildCAS(Operation* op, Node* dest) {
     ChildCASOp* child_op = (ChildCASOp *) op;
     Node* volatile* addr = child_op->is_left ? &dest->left : &dest->right;
-    CAS(address, child_op->expected, child_op->update);
+    // Update child node value
+    CAS(addr, child_op->expected, child_op->update);
+    // Update parent operation field
     CAS(&dest->op, SET_FLAG(op, CHILDCAS), SET_FLAG(op, NONE));
+}
+
+/* Physically relocate replace node to removal node */
+bool BST::helpRelocate(Operation* op, Node* parent, Operation* parent_op, Node* curr) {
+    RelocateOp* relo_op = (RelocateOp *)op;
+    bool result;
+    int state = relo_op->state;
+
+    // Operate on the remove node
+    if (state == ONGOING) {
+        Operation* seen_op = VCAS(&relo_op->dest->op, relo_op->dest_op, SET_FLAG(relo_op, RELOCATE));
+        // Either this thread start removal or other thread start removal
+        if ((seen_op == relo_op->dest_op) || (seen_op == SET_FLAG(op, RELOCATE))) {
+            CAS(&relo_op->state, ONGOING, SUCCEED);
+            state = SUCCEED;
+        }
+        else {
+            state = VCAS(&relo_op->state, ONGOING, FAILED);
+        }
+    }
+    if (state == SUCCEED) {
+        // Key removal
+        CAS(&relo_op->dest->key, relo_op->key_to_remove, relo_op->key_to_put);
+        // Op update
+        CAS(&relo_op->dest->op, SET_FLAG(op, RELOCATE), SET_FLAG(op, NONE));
+    }
+
+    // Clean up the replace node
+    result = (state == SUCCEED);
+    // In case relocated is called from find
+    if (relo_op->dest == curr) return result;
+    CAS(&curr->op, SET_FLAG(relo_op, RELOCATE), SET_FLAG(relo_op, result ? MARK : NONE));
+    // If success, mark and remove the replace node
+    if (result) {
+        if (relo_op->dest == parent) parent_op = SET_FLAG(relo_op, NONE);
+        helpMarked(parent, parent_op, curr);
+    }
+    return result;
+}
+
+int main() {
+    BST* tree = new BST();
+    printf("Hello lock free BST\n");
 }
