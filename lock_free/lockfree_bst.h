@@ -1,3 +1,7 @@
+class Operation {
+
+};
+
 class Node {
 public:
     int volatile key;
@@ -5,11 +9,8 @@ public:
     Node* volatile left;
     Node* volatile right;
 
+    Node();
     Node(int k);
-};
-
-class Operation {
-
 };
 
 class ChildCASOp : public Operation {
@@ -39,6 +40,7 @@ public:
     bool contains(int k);
     bool add(int k);
     bool remove(int k);
+    BST();
 
 private:
     int find(int k, Node*& parent, Operation*& parent_op, Node*& curr,
