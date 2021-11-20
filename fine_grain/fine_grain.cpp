@@ -6,10 +6,12 @@ using namespace std;
 struct Node {
 	int key;
 	struct Node *left, *right;
+	mutex lock;
 };
 
 struct Tree {
 	struct Node *root;
+	mutex lock;
 };
 
 // A utility function to create a new BST node
@@ -57,28 +59,39 @@ void inorder(Node* root)
 void insert(Tree* tree, int key)
 {
 	/* If the tree is empty, set root to a new node */
+	tree->lock.lock();
 	if (tree->root == NULL) {
 		tree->root = newNode(key);
+		tree->lock.unlock();
 		return;
 	}
 
 	/* Otherwise, recur down the tree */
 	Node *node = tree->root;
+	node->lock.lock();
+	tree->lock.unlock();
 	while (true) {
-		assert(node != NULL);
 		if (key < node->key) {
 			if (node->left == NULL) {
 				node->left = newNode(key);
+				node->lock.unlock();
 				break;
 			} else {
-				node = node->left;
+				Node *next = node->left;
+				next->lock.lock();
+				node->lock.unlock();
+				node = next;
 			}
 		} else {
 			if (node->right == NULL) {
 				node->right = newNode(key);
+				node->lock.unlock();
 				break;
 			} else {
-				node = node->right;
+				Node *next = node->right;
+				next->lock.lock();
+				node->lock.unlock();
+				node = next;
 			}
 		}
 	}
@@ -183,6 +196,7 @@ void testConcurrentInsert() {
 			return;
 		}
 	}
+	printf("Concurrent insertion passed!\n");
 }
 
 // Driver Code
