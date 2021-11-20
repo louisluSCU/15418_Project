@@ -114,45 +114,53 @@ void insert(Tree* tree, int key)
 
 /* Given a binary search tree and a key, this function
 deletes the key and returns the new root */
-Node* deleteNode(Node* root, int k)
+void deleteNode(Tree* tree, int key)
 {
-	// Base case
-	if (root == NULL)
-		return root;
+	// Empty
+	if (tree->root == NULL)
+		return;
 
-	// Recursive calls for ancestors of
-	// node to be deleted
-	if (root->key > k) {
-		root->left = deleteNode(root->left, k);
-		return root;
+	// recur down tree until we reach
+	// the node to be deleted
+	Node* prev = NULL;
+	Node* cur = tree->root;
+	while (cur) {
+		if (key < cur->key) {
+			prev = cur;
+			cur = cur->left;
+		} else if (key > cur->key) {
+			prev = cur;
+			cur = cur->right;
+		} else {
+			// found key
+			break;
+		}
 	}
-	else if (root->key < k) {
-		root->right = deleteNode(root->right, k);
-		return root;
-	}
+	if (cur == NULL) return; // key not found
 
-	// We reach here when root is the node
-	// to be deleted.
+	// at this point cur is the node to be deleted and prev is its parent
 
-	// If one of the children is empty
-	if (root->left == NULL) {
-		Node* temp = root->right;
-		delete root;
-		return temp;
-	}
-	else if (root->right == NULL) {
-		Node* temp = root->left;
-		delete root;
-		return temp;
+	// If one of the children is empty, replace node with non-empty child
+	if (cur->left == NULL || cur->right == NULL) {
+		Node* temp = (cur->left == NULL) ? cur->right : cur->left;
+		if (prev == NULL) {
+			// cur is root 
+			tree->root = temp;
+		} else if (prev->left == cur) {
+			prev->left = temp;
+		} else {
+			prev->right = temp;
+		}
+		delete cur;
 	}
 
 	// If both children exist
 	else {
 
-		Node* succParent = root;
+		Node* succParent = cur;
 
 		// Find successor
-		Node* succ = root->right;
+		Node* succ = cur->right;
 		while (succ->left != NULL) {
 			succParent = succ;
 			succ = succ->left;
@@ -164,21 +172,21 @@ Node* deleteNode(Node* root, int k)
 		// right child as left of its parent.
 		// If there is no succ, then assign
 		// succ->right to succParent->right
-		if (succParent != root)
+		if (succParent != cur)
 			succParent->left = succ->right;
 		else
 			succParent->right = succ->right;
 
 		// Copy Successor Data to root
-		root->key = succ->key;
+		cur->key = succ->key;
 
-		// Delete Successor and return root
+		// Delete Successor
 		delete succ;
-		return root;
 	}
 }
 
-void insertRange(int low, int high, Tree* t) {
+// insert the range in random order
+void insertRangeRandom(int low, int high, Tree* t) {
 	vector<int> v;
 	for (int i = low; i < high; i++) {
 		v.push_back(i);
@@ -191,16 +199,17 @@ void insertRange(int low, int high, Tree* t) {
 
 void testConcurrentInsert() {
 	Tree* t = newTree();
-	insertRange(0, 100000, t);
+	insertRangeRandom(0, 100000, t);
 	for (int i = 0; i < 100000; i++) {
 		assert(search(t->root, i) != NULL);
 	}
 	freeTree(t);
 	printf("Sequential insertion passed!\n");
+
 	int threadCount = 64;
 	vector<thread> tvec;
 	for (int i = 0; i < threadCount; i++) {
-		tvec.push_back(thread(insertRange, i * 1000, (i+1) * 1000, t));
+		tvec.push_back(thread(insertRangeRandom, i * 1000, (i+1) * 1000, t));
 	}
 	for (int i = 0; i < threadCount; i++) {
 		tvec[i].join();
@@ -215,9 +224,71 @@ void testConcurrentInsert() {
 	printf("Concurrent insertion passed!\n");
 }
 
+// delete even numbers in range
+void deleteRangeEven(int low, int high, Tree *t) {
+	int start = (low % 2 == 0) ? low : low + 1;
+	for (int i = start; i < high; i += 2) {
+		deleteNode(t, i);
+	}
+}
+
+// delete entire range
+void deleteRange(int low, int high, Tree *t) {
+	for (int i = low; i < high; i++) {
+		deleteNode(t, i);
+	}
+}
+
+void testConcurrentDelete() {
+	int numThreads = 128;
+	int threadSize = 1000;
+
+	Tree *t = newTree();
+	int totalSize = numThreads * threadSize;
+	insertRangeRandom(0, totalSize, t);
+	// delete all but the smallest number of each thread
+	for (int i = 0; i < numThreads; i++) {
+		deleteRange(i * threadSize + 1, (i+1) * threadSize, t);
+	}
+	for (int i = 0; i < totalSize; i++) {
+		if (i % threadSize == 0) {
+			assert(search(t->root, i) != NULL);
+		} else {
+			assert(search(t->root, i) == NULL);
+		}
+	}
+	freeTree(t);
+	printf("Sequential deletion passed!\n");
+	
+	insertRangeRandom(0, numThreads * threadSize, t);
+	vector<thread> tvec;
+	for (int i = 0; i < numThreads; i++) {
+		tvec.push_back(thread(deleteRange, i * threadSize + 1, (i+1) * threadSize, t));
+	}
+	for (int i = 0; i < numThreads; i++) {
+		tvec[i].join();
+	}
+	for (int i = 0; i < numThreads * threadSize; i++) {
+		if (i % threadSize == 0) {
+			if (search(t->root, i) == NULL) {
+				printf("Concurrent deletion failed: %d should NOT be deleted but dropped\n", i);
+				return;
+			}
+		} else {
+			if (search(t->root, i) != NULL) {
+				printf("Concurrent deletion failed: %d should be deleted but is kept\n", i);
+				return;
+			}
+		}	
+	}
+	freeTree(t);
+	printf("Concurrent deletion passed!\n");
+}
+
 // Driver Code
 int main()
 {
 	testConcurrentInsert();
+	testConcurrentDelete();
 }
 
