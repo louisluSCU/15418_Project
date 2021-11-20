@@ -8,6 +8,10 @@ struct Node {
 	struct Node *left, *right;
 };
 
+struct Tree {
+	struct Node *root;
+};
+
 // A utility function to create a new BST node
 Node* newNode(int item)
 {
@@ -15,6 +19,12 @@ Node* newNode(int item)
 	temp->key = item;
 	temp->left = temp->right = NULL;
 	return temp;
+}
+
+Tree* newTree() {
+	Tree* t = new Tree;
+	t->root = NULL;
+	return t;
 }
 
 // C function to search a given key in a given BST
@@ -44,20 +54,34 @@ void inorder(Node* root)
 
 /* A utility function to insert a new node with given key in
 * BST */
-Node* insert(Node* node, int key)
+void insert(Tree* tree, int key)
 {
-	/* If the tree is empty, return a new node */
-	if (node == NULL)
-		return newNode(key);
+	/* If the tree is empty, set root to a new node */
+	if (tree->root == NULL) {
+		tree->root = newNode(key);
+		return;
+	}
 
 	/* Otherwise, recur down the tree */
-	if (key < node->key)
-		node->left = insert(node->left, key);
-	else
-		node->right = insert(node->right, key);
-
-	/* return the (unchanged) node pointer */
-	return node;
+	Node *node = tree->root;
+	while (true) {
+		assert(node != NULL);
+		if (key < node->key) {
+			if (node->left == NULL) {
+				node->left = newNode(key);
+				break;
+			} else {
+				node = node->left;
+			}
+		} else {
+			if (node->right == NULL) {
+				node->right = newNode(key);
+				break;
+			} else {
+				node = node->right;
+			}
+		}
+	}
 }
 
 /* Given a binary search tree and a key, this function
@@ -126,42 +150,44 @@ Node* deleteNode(Node* root, int k)
 	}
 }
 
+void insertRange(int low, int high, Tree* t) {
+	vector<int> v;
+	for (int i = low; i < high; i++) {
+		v.push_back(i);
+	}
+	random_shuffle(v.begin(), v.end());
+	for (int n: v) {
+		insert(t, n);
+	}
+}
+
+void testConcurrentInsert() {
+	Tree* t = newTree();
+	insertRange(0, 100000, t);
+	for (int i = 0; i < 100000; i++) {
+		assert(search(t->root, i) != NULL);
+	}
+	printf("Sequential insertion passed!\n");
+	t = newTree();
+	int threadCount = 64;
+	vector<thread> tvec;
+	for (int i = 0; i < threadCount; i++) {
+		tvec.push_back(thread(insertRange, i * 1000, (i+1) * 1000, t));
+	}
+	for (int i = 0; i < threadCount; i++) {
+		tvec[i].join();
+	}
+	for (int i = 0; i < 1000 * threadCount; i++) {
+		if (search(t->root, i) == NULL) {
+			printf("Concurrent insertion failed: %d is lost\n", i);
+			return;
+		}
+	}
+}
+
 // Driver Code
 int main()
 {
-	/* Let us create following BST
-			50
-		/	 \
-		30	 70
-		/ \ / \
-	20 40 60 80 */
-	Node* root = NULL;
-	root = insert(root, 50);
-	root = insert(root, 30);
-	root = insert(root, 20);
-	root = insert(root, 40);
-	root = insert(root, 70);
-	root = insert(root, 60);
-	root = insert(root, 80);
-
-	printf("Inorder traversal of the given tree \n");
-	inorder(root);
-
-	printf("\nDelete 20\n");
-	root = deleteNode(root, 20);
-	printf("Inorder traversal of the modified tree \n");
-	inorder(root);
-
-	printf("\nDelete 30\n");
-	root = deleteNode(root, 30);
-	printf("Inorder traversal of the modified tree \n");
-	inorder(root);
-
-	printf("\nDelete 50\n");
-	root = deleteNode(root, 50);
-	printf("Inorder traversal of the modified tree \n");
-	inorder(root);
-
-	return 0;
+	testConcurrentInsert();
 }
 
