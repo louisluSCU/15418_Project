@@ -54,6 +54,21 @@ void inorder(Node* root)
 	}
 }
 
+// helper function for freeing tree
+void freeTreeHelper(Node* root) {
+	// base case
+	if (root == NULL) return;
+	freeTreeHelper(root->left);
+	freeTreeHelper(root->right);
+	delete root;
+}
+
+// utility function for deleting entire tree and freeing all memory
+void freeTree(Tree* tree) {
+	freeTreeHelper(tree->root);
+	tree->root = NULL;
+}
+
 /* A utility function to insert a new node with given key in
 * BST */
 void insert(Tree* tree, int key)
@@ -180,8 +195,8 @@ void testConcurrentInsert() {
 	for (int i = 0; i < 100000; i++) {
 		assert(search(t->root, i) != NULL);
 	}
+	freeTree(t);
 	printf("Sequential insertion passed!\n");
-	t = newTree();
 	int threadCount = 64;
 	vector<thread> tvec;
 	for (int i = 0; i < threadCount; i++) {
@@ -196,6 +211,7 @@ void testConcurrentInsert() {
 			return;
 		}
 	}
+	freeTree(t);
 	printf("Concurrent insertion passed!\n");
 }
 
