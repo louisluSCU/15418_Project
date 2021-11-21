@@ -5,13 +5,14 @@ The team members are: Ye Lu, Sean Zhou
 
 ## Project proposal
 You can find our project proposal [here](https://github.com/louisluSCU/15418_Project/edit/gh-pages/project_proposal.pdf)
+You can find our milestone report [here](https://github.com/louisluSCU/15418_Project/blob/gh-pages/Project%20milestone%20report.pdf)
 
 ## Project progress
-:heavy_check_mark: 11.3 - 11.8: paper reading and implementation decisions discussion
+✅ 11.3 - 11.8: paper reading and implementation decisions discussion
 
 11.9 - 11.15: implementation of fine-grained locking BST
 
-:heavy_check_mark: 11.16 - 11.21: implementation of lock-free BST
+✅ 11.16 - 11.21: implementation of lock-free BST
 
 11.22 - 11.25: Implement harness program and design workloads (Sean)
 
