@@ -8,7 +8,7 @@ You can find our project proposal [here](https://github.com/louisluSCU/15418_Pro
 
 ## Project progress
 | Period | Goal |
-| :---:         |     :---:      |
+| --- | --- |
 | :heavy_check_mark: 11.3 - 11.8   | paper reading and implementation decisions discussion    |
 | 11.9 - 11.15     | implementation of fine-grained locking BST       |
 | :heavy_check_mark: 11.16 - 11.21     | implementation of lock-free BST       |
