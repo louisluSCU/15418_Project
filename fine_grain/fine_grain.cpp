@@ -71,6 +71,39 @@ void freeTree(Tree* tree) {
 	tree->root = NULL;
 }
 
+/* Utility function to check if tree contains key
+* Concurrent by fine-grained locking */
+bool contains(Tree* tree, int key) {
+	/* return false if tree is empty */
+	tree->lock.lock();
+	if (tree->root == NULL) {
+		tree->lock.unlock();
+		return false;
+	}
+
+	/* Otherwise, iterate down the tree */
+	Node *cur = tree->root;
+	cur->lock.lock();
+	tree->lock.unlock();
+	while (cur) {
+		if (cur->key == key) {
+			cur->lock.unlock();
+			return true;
+		} else if (key < cur->key) {
+			Node *next = cur->left;
+			if (next != NULL) next->lock.lock();
+			cur->lock.unlock();
+			cur = next;
+		} else {
+			Node *next = cur->right;
+			if (next != NULL) next->lock.lock();
+			cur->lock.unlock();
+			cur = next;
+		}
+	}
+	return false;
+} 
+
 /* A utility function to insert a new node with given key in
 * BST (Concurrent by fine-grained locking) */
 void insert(Tree* tree, int key)
@@ -83,7 +116,7 @@ void insert(Tree* tree, int key)
 		return;
 	}
 
-	/* Otherwise, recur down the tree */
+	/* Otherwise, iterate down the tree */
 	Node *node = tree->root;
 	node->lock.lock();
 	tree->lock.unlock();
@@ -274,8 +307,28 @@ void deleteRange(int low, int high, Tree *t) {
 void insertRangeDeleteEven(int low, int high, int interval, Tree *t) {
 	for (int i = low; i < high; i += interval) {
 		insertRangeRandom(i, min(high, i + interval), t);
-		deleteRangeEven(i, i + interval, t);
+		deleteRangeEven(i, min(high, i + interval), t);
 	}
+}
+
+// insert range in random order, delete even elements and search for elements
+void insertRangeDeleteEvenSearch(int low, int high, int interval, Tree *t, bool *b) {
+	for (int i = low; i < high; i += interval) {
+		insertRangeRandom(i, min(high, i + interval), t);
+		deleteRangeEven(i, min(high, i + interval), t);
+		for (int j = i; j < min(high, i + interval); j++) {
+			if (j % 2 == 0 && contains(t, j)) {
+				printf("insertDeleteSearch failed: %d should be deleted but is found\n", j);
+				*b = false;
+				return;
+			} else if (j % 2 == 1 && !contains(t, j)) {
+				printf("insertDeleteSearch failed: %d should be kept but is not found\n", j);
+				*b = false;
+				return;
+			}
+		}
+	}
+	*b = true;
 }
 
 void testSequentialDelete() {
@@ -361,6 +414,29 @@ void testMixInsertDelete() {
 	printf("insert delete test passed!\n");
 }
 
+void testInsertDeleteSearchMix() {
+	Tree* t = newTree();
+	int numThreads = 64;
+	int threadSize = 1000;
+	int interval = 1;
+	bool result[numThreads];
+	vector<thread> tvec;
+	for (int i = 0; i < numThreads; i++) {
+		tvec.push_back(thread(insertRangeDeleteEvenSearch, i * threadSize, (i+1) * threadSize, interval, t, &result[i]));
+	}
+	for (int i = 0; i < numThreads; i++) {
+		tvec[i].join();
+	}
+	freeTree(t);
+	for (int i = 0; i < numThreads; i++) {
+		if (result[i] == false) {
+			printf("insertDeleteSearch Failed on thread %d\n", i);
+			return;
+		}
+	}
+	printf("insertDeleteSearch passed!\n");
+}
+
 // Driver Code
 int main()
 {
@@ -374,6 +450,9 @@ int main()
 	}
 	for (int i = 0; i < 10; i++) {
 		testMixInsertDelete();
+	}
+	for (int i = 0; i < 10; i++) {
+		testInsertDeleteSearchMix();
 	}
 }
 
