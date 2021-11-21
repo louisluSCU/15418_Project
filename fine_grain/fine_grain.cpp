@@ -197,7 +197,7 @@ void insertRangeRandom(int low, int high, Tree* t) {
 	}
 }
 
-void testConcurrentInsert() {
+void testSequentialInsert() {
 	Tree* t = newTree();
 	insertRangeRandom(0, 100000, t);
 	for (int i = 0; i < 100000; i++) {
@@ -205,6 +205,10 @@ void testConcurrentInsert() {
 	}
 	freeTree(t);
 	printf("Sequential insertion passed!\n");
+}
+
+void testConcurrentInsert() {
+	Tree* t = newTree();
 
 	int threadCount = 64;
 	vector<thread> tvec;
@@ -239,7 +243,15 @@ void deleteRange(int low, int high, Tree *t) {
 	}
 }
 
-void testConcurrentDelete() {
+// insert range in random order than delete even elements
+void insertRangeDeleteEven(int low, int high, int interval, Tree *t) {
+	for (int i = low; i < high; i += interval) {
+		insertRangeRandom(i, min(high, i + interval), t);
+		deleteRangeEven(i, i + interval, t);
+	}
+}
+
+void testSequentialDelete() {
 	int numThreads = 128;
 	int threadSize = 1000;
 
@@ -259,6 +271,13 @@ void testConcurrentDelete() {
 	}
 	freeTree(t);
 	printf("Sequential deletion passed!\n");
+}
+
+void testConcurrentDelete() {
+	int numThreads = 128;
+	int threadSize = 1000;
+
+	Tree *t = newTree();
 	
 	insertRangeRandom(0, numThreads * threadSize, t);
 	vector<thread> tvec;
@@ -285,10 +304,49 @@ void testConcurrentDelete() {
 	printf("Concurrent deletion passed!\n");
 }
 
+void testMixInsertDelete() {
+	Tree* t = newTree();
+	int numThreads = 64;
+	int threadSize = 1000;
+	int interval = 1;
+	vector<thread> tvec;
+	for (int i = 0; i < numThreads; i++) {
+		tvec.push_back(thread(insertRangeDeleteEven, i * threadSize, (i+1) * threadSize, interval, t));
+	}
+	for (int i = 0; i < numThreads; i++) {
+		tvec[i].join();
+	}
+	for (int i = 0; i < numThreads * threadSize; i += 2) {
+		if (search(t->root, i) != NULL) {
+			printf("mix failed: %d should be deleted but is kept\n", i);
+			freeTree(t);
+			return;
+		}
+	}
+	for (int i = 1; i < numThreads * threadSize; i += 2) {
+		if (search(t->root, i) == NULL) {
+			printf("mix failed: %d should be kept but is lost\n", i);
+			freeTree(t);
+			return;
+		}
+	}
+	freeTree(t);
+	printf("insert delete test passed!\n");
+}
+
 // Driver Code
 int main()
 {
-	testConcurrentInsert();
-	testConcurrentDelete();
+	testSequentialInsert();
+	testSequentialDelete();
+	for (int i = 0; i < 10; i++) {
+		testConcurrentInsert();
+	}
+	for (int i = 0; i < 10; i++) {
+		testConcurrentDelete();
+	}
+	for (int i = 0; i < 10; i++) {
+		testMixInsertDelete();
+	}
 }
 
