@@ -10,7 +10,7 @@ You can find our milestone report [here](https://github.com/louisluSCU/15418_Pro
 ## Project progress
 ✅ 11.3 - 11.8: paper reading and implementation decisions discussion
 
-11.9 - 11.15: implementation of fine-grained locking BST
+✅ 11.9 - 11.15: implementation of fine-grained locking BST
 
 ✅ 11.16 - 11.21: implementation of lock-free BST
 
