@@ -30,6 +30,7 @@ Tree* newTree() {
 }
 
 // C function to search a given key in a given BST
+// Cited from https://www.geeksforgeeks.org/binary-search-tree-set-1-search-and-insertion/?ref=lbp
 Node* search(Node* root, int key)
 {
     // Base Cases: root is null or key is present at root
@@ -45,6 +46,7 @@ Node* search(Node* root, int key)
 }
 
 // A utility function to do inorder traversal of BST
+// Cited from https://www.geeksforgeeks.org/binary-search-tree-set-1-search-and-insertion/?ref=lbp
 void inorder(Node* root)
 {
 	if (root != NULL) {
@@ -70,7 +72,7 @@ void freeTree(Tree* tree) {
 }
 
 /* A utility function to insert a new node with given key in
-* BST */
+* BST (Concurrent by fine-grained locking) */
 void insert(Tree* tree, int key)
 {
 	/* If the tree is empty, set root to a new node */
@@ -113,7 +115,7 @@ void insert(Tree* tree, int key)
 }
 
 /* Given a binary search tree and a key, this function
-deletes the key and returns the new root */
+deletes the key (Concurrent by fine-grained locking) */
 void deleteNode(Tree* tree, int key)
 {
 	// Empty
