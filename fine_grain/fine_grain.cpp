@@ -117,28 +117,40 @@ deletes the key and returns the new root */
 void deleteNode(Tree* tree, int key)
 {
 	// Empty
-	if (tree->root == NULL)
+	tree->lock.lock();
+	if (tree->root == NULL) {
+		tree->lock.unlock();
 		return;
+	}
 
 	// recur down tree until we reach
-	// the node to be deleted
+	// the node to be deleted, locking hand over hand
 	Node* prev = NULL;
 	Node* cur = tree->root;
+	cur->lock.lock();
 	while (cur) {
 		if (key < cur->key) {
+			if (prev == NULL) tree->lock.unlock();
+			else prev->lock.unlock();
 			prev = cur;
 			cur = cur->left;
+			if (cur != NULL) cur->lock.lock();
 		} else if (key > cur->key) {
+			if (prev == NULL) tree->lock.unlock();
+			else prev->lock.unlock();
 			prev = cur;
 			cur = cur->right;
+			if (cur != NULL) cur->lock.lock();
 		} else {
 			// found key
 			break;
 		}
 	}
-	if (cur == NULL) return; // key not found
-
-	// at this point cur is the node to be deleted and prev is its parent
+	if (cur == NULL) {
+		prev->lock.unlock();
+		return; // key not found
+	}
+	// at this point cur is the node to be deleted and prev is its parent, and both cur and prev are locked
 
 	// If one of the children is empty, replace node with non-empty child
 	if (cur->left == NULL || cur->right == NULL) {
@@ -152,18 +164,23 @@ void deleteNode(Tree* tree, int key)
 			prev->right = temp;
 		}
 		delete cur;
+		if (prev == NULL) tree->lock.unlock();
+		else prev->lock.unlock();
 	}
 
 	// If both children exist
 	else {
-
+		// TODO: could potentially unlock prev here
 		Node* succParent = cur;
 
 		// Find successor
 		Node* succ = cur->right;
+		succ->lock.lock();
 		while (succ->left != NULL) {
+			if (succParent != cur) succParent->lock.unlock();
 			succParent = succ;
 			succ = succ->left;
+			if (succ->left != NULL) succ->left->lock.lock();
 		}
 
 		// Delete successor. Since successor
@@ -172,6 +189,8 @@ void deleteNode(Tree* tree, int key)
 		// right child as left of its parent.
 		// If there is no succ, then assign
 		// succ->right to succParent->right
+
+		// succ and succParent are both locked at this point
 		if (succParent != cur)
 			succParent->left = succ->right;
 		else
@@ -182,6 +201,12 @@ void deleteNode(Tree* tree, int key)
 
 		// Delete Successor
 		delete succ;
+
+		// unlock all 3 (or 2) locks 
+		if (succParent != cur) succParent->lock.unlock();
+		cur->lock.unlock();
+		if (prev == NULL) tree->lock.unlock();
+		else prev->lock.unlock();
 	}
 }
 
