@@ -14,6 +14,10 @@
 
 #define CAS(obj, expected, desired) __sync_bool_compare_and_swap(obj, expected, desired)
 
+#define DEBUG 0
+#define log(fmt, ...) \
+        do { if (DEBUG) {fprintf(stdout, fmt, __VA_ARGS__);} } while (0)
+
 enum op_flag {
     NONE, TOMB, CHILDCAS, RELOCATE
 };
@@ -26,8 +30,23 @@ enum relocate_state {
     ONGOING, SUCCEED, FAILED
 };
 
-Node::Node() : key(0) {}
-Node::Node(int k) : key(k) {}
+Node::Node() : key(0) {
+    op = NULL;
+    left = NULL;
+    right = NULL;
+    op = SET_FLAG(op, 0);
+    left = SET_NULL(left);
+    right = SET_NULL(right);
+}
+
+Node::Node(int k) : key(k) {
+    op = NULL;
+    left = NULL;
+    right = NULL;
+    op = SET_FLAG(op, 0);
+    left = SET_NULL(left);
+    right = SET_NULL(right);
+}
 
 ChildCASOp::ChildCASOp(bool is_left, Node* old, Node* new_n) {
     this->is_left = is_left;
@@ -44,11 +63,12 @@ RelocateOp::RelocateOp(Node* curr, Operation* curr_op, int curr_key, int new_key
 }
 
 BST::BST() {
-    root.key = -1;
+    root = Node(-1);
 }
 
 int BST::find(int k, Node*& parent, Operation*& parent_op, Node*& curr,
          Operation*& curr_op, Node* root) {
+    log("Find key %d\n", k);
     int result, current_key;
     Node* next, *last_right;
     Operation* last_right_op;
@@ -107,12 +127,14 @@ int BST::find(int k, Node*& parent, Operation*& parent_op, Node*& curr,
 }
 
 bool BST::contains(int k) {
+    log("Contains key %d\n", k);
     Node* parent, *curr;
     Operation* parent_op, *curr_op;
     return find(k, parent, parent_op, curr, curr_op, &root) == FOUND;
 }
 
 bool BST::add(int k) {
+    log("Add key %d\n", k);
     Node* parent, *curr, *new_node;
     Operation* parent_op, *curr_op, *cas_op;
     int result;
@@ -135,6 +157,7 @@ bool BST::add(int k) {
 }
 
 bool BST::remove(int k) {
+    log("Remove key %d\n", k);
     Node* parent, *curr, *replace;
     Operation* parent_op, *curr_op, *replace_op, *relocate_op;
 
