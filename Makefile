@@ -1,9 +1,25 @@
-CC = g++
-CFLAGS = -std=c++11 -Wall
-LFDIR = lock_free
+APP_NAME = correctness_test performance_test
+CORRECTNESS_OBJS = fine_grain/fine_grain.o lock_free/lockfree_bst.o test/correctness_test.o
+PERFORMANCE_OBJS = fine_grain/fine_grain.o lock_free/lockfree_bst.o test/performance_test.o
+CXX = g++ -m64 -std=c++11
+CXXFLAGS = -I. -O3 -Wall -pthread
 
-lockfree_bst:
-	$(CC) $(CFLAGS) -o $(LFDIR)/lockfree_bst $(LFDIR)/lockfree_bst.cc
+default: $(APP_NAME)
+
+# $(APP_NAME): $(OBJS)
+# 	$(CXX) $(CXXFLAGS) -o $@ $(OBJS)
+
+correctness_test: $(CORRECTNESS_OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $(CORRECTNESS_OBJS)
+
+performance_test: $(PERFORMANCE_OBJS)
+	$(CXX) $(CXXFLAGS) -o $@ $(PERFORMANCE_OBJS)
+
+fine_grain/%.o: fine_grain/%.cpp
+	$(CXX) $< $(CXXFLAGS) -c -o $@
+
+lock_free/%.o: lock_free/%.cpp
+	$(CXX) $< $(CXXFLAGS) -c -o $@
 
 clean:
-	rm $(LFDIR)/lockfree_bst
+	/bin/rm -rf fine_grain/*.o lock_free/*.o test/*.o $(APP_NAME)

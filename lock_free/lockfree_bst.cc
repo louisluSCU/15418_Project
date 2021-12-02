@@ -257,9 +257,3 @@ void macro_checker() {
     printf("Nullify node: %p\n", nn);
     printf("Check null node: %d\n", IS_NULL(nn));
 }
-
-int main() {
-    BST* tree = new BST();
-    printf("Hello lock free BST\n");
-    macro_checker();
-}

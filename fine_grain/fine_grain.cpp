@@ -1,7 +1,7 @@
 // C++ program to implement optimized delete in BST (Sequential Base Code from GeeksForGeeks 
 // https://www.geeksforgeeks.org/binary-search-tree-set-1-search-and-insertion/?ref=lbp).
 #include <bits/stdc++.h>
-#include <fine_grain.h>
+#include "fine_grain/fine_grain.h"
 using namespace std;
 
 // A utility function to create a new BST node
