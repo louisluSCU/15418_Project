@@ -12,8 +12,7 @@
 #define SET_NULL(node)  ((Node*) ((uintptr_t) node | NULL_MASK))
 #define IS_NULL(node)   (((uintptr_t) node & NULL_MASK) == 1UL)
 
-#define CAS(obj, expected, desired) true
-#define VCAS(obj, expected, desired) desired
+#define CAS(obj, expected, desired) __sync_bool_compare_and_swap(obj, expected, desired)
 
 enum op_flag {
     NONE, TOMB, CHILDCAS, RELOCATE
@@ -210,14 +209,16 @@ bool BST::helpRelocate(Operation* op, Node* parent, Operation* parent_op, Node* 
 
     // Operate on the remove node
     if (state == ONGOING) {
-        Operation* seen_op = VCAS(&relo_op->dest->op, relo_op->dest_op, SET_FLAG(relo_op, RELOCATE));
+        CAS(&relo_op->dest->op, relo_op->dest_op, SET_FLAG(relo_op, RELOCATE));
+        Operation* seen_op = relo_op->dest->op;
         // Either this thread start removal or other thread start removal
         if ((seen_op == relo_op->dest_op) || (seen_op == SET_FLAG(op, RELOCATE))) {
             CAS(&relo_op->state, ONGOING, SUCCEED);
             state = SUCCEED;
         }
         else {
-            state = VCAS(&relo_op->state, ONGOING, FAILED);
+            CAS(&relo_op->state, ONGOING, FAILED);
+            state = relo_op->state;
         }
     }
     if (state == SUCCEED) {
@@ -231,7 +232,7 @@ bool BST::helpRelocate(Operation* op, Node* parent, Operation* parent_op, Node* 
     result = (state == SUCCEED);
     // In case relocated is called from find
     if (relo_op->dest == curr) return result;
-    CAS(&curr->op, SET_FLAG(relo_op, RELOCATE), SET_FLAG(relo_op, result ? MARK : NONE));
+    CAS(&curr->op, SET_FLAG(relo_op, RELOCATE), SET_FLAG(relo_op, result ? TOMB : NONE));
     // If success, mark and remove the replace node
     if (result) {
         if (relo_op->dest == parent) parent_op = SET_FLAG(relo_op, NONE);
@@ -240,7 +241,25 @@ bool BST::helpRelocate(Operation* op, Node* parent, Operation* parent_op, Node* 
     return result;
 }
 
+void macro_checker() {
+    Operation* op = new ChildCASOp(false, NULL, NULL);
+    Operation* new_op;
+    printf("Origi pointer: %p\n", op);
+    new_op = SET_FLAG(op, RELOCATE);
+    printf("Pointer flag: %ld\n", GET_FLAG(new_op));
+    printf("Flagged pointer: %p\n", new_op);
+    printf("Deflagged pointer: %p\n", DE_FLAG(new_op));
+
+    Node* n = new Node();
+    Node* nn;
+    printf("Origi node: %p\n", n);
+    nn = SET_NULL(n);
+    printf("Nullify node: %p\n", nn);
+    printf("Check null node: %d\n", IS_NULL(nn));
+}
+
 int main() {
     BST* tree = new BST();
     printf("Hello lock free BST\n");
+    macro_checker();
 }

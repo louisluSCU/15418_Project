@@ -4,3 +4,6 @@ LFDIR = lock_free
 
 lockfree_bst:
 	$(CC) $(CFLAGS) -o $(LFDIR)/lockfree_bst $(LFDIR)/lockfree_bst.cc
+
+clean:
+	rm $(LFDIR)/lockfree_bst
