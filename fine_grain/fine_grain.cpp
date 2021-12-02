@@ -5,9 +5,9 @@
 using namespace std;
 
 // A utility function to create a new BST node
-Node* newNode(int item)
+FGT_Node* newNode(int item)
 {
-	Node* temp = new Node;
+	FGT_Node* temp = new FGT_Node;
 	temp->key = item;
 	temp->left = temp->right = NULL;
 	return temp;
@@ -21,7 +21,7 @@ Tree* newTree() {
 
 // C function to search a given key in a given BST
 // Cited from https://www.geeksforgeeks.org/binary-search-tree-set-1-search-and-insertion/?ref=lbp
-Node* search(Node* root, int key)
+FGT_Node* search(FGT_Node* root, int key)
 {
     // Base Cases: root is null or key is present at root
     if (root == NULL || root->key == key)
@@ -37,7 +37,7 @@ Node* search(Node* root, int key)
 
 // A utility function to do inorder traversal of BST
 // Cited from https://www.geeksforgeeks.org/binary-search-tree-set-1-search-and-insertion/?ref=lbp
-void inorder(Node* root)
+void inorder(FGT_Node* root)
 {
 	if (root != NULL) {
 		inorder(root->left);
@@ -47,7 +47,7 @@ void inorder(Node* root)
 }
 
 // helper function for freeing tree
-void freeTreeHelper(Node* root) {
+void freeTreeHelper(FGT_Node* root) {
 	// base case
 	if (root == NULL) return;
 	freeTreeHelper(root->left);
@@ -72,7 +72,7 @@ bool contains(Tree* tree, int key) {
 	}
 
 	/* Otherwise, iterate down the tree */
-	Node *cur = tree->root;
+	FGT_Node *cur = tree->root;
 	cur->lock.lock();
 	tree->lock.unlock();
 	while (cur) {
@@ -80,12 +80,12 @@ bool contains(Tree* tree, int key) {
 			cur->lock.unlock();
 			return true;
 		} else if (key < cur->key) {
-			Node *next = cur->left;
+			FGT_Node *next = cur->left;
 			if (next != NULL) next->lock.lock();
 			cur->lock.unlock();
 			cur = next;
 		} else {
-			Node *next = cur->right;
+			FGT_Node *next = cur->right;
 			if (next != NULL) next->lock.lock();
 			cur->lock.unlock();
 			cur = next;
@@ -107,7 +107,7 @@ void insert(Tree* tree, int key)
 	}
 
 	/* Otherwise, iterate down the tree */
-	Node *node = tree->root;
+	FGT_Node *node = tree->root;
 	node->lock.lock();
 	tree->lock.unlock();
 	while (true) {
@@ -117,7 +117,7 @@ void insert(Tree* tree, int key)
 				node->lock.unlock();
 				break;
 			} else {
-				Node *next = node->left;
+				FGT_Node *next = node->left;
 				next->lock.lock();
 				node->lock.unlock();
 				node = next;
@@ -128,7 +128,7 @@ void insert(Tree* tree, int key)
 				node->lock.unlock();
 				break;
 			} else {
-				Node *next = node->right;
+				FGT_Node *next = node->right;
 				next->lock.lock();
 				node->lock.unlock();
 				node = next;
@@ -150,8 +150,8 @@ void deleteNode(Tree* tree, int key)
 
 	// recur down tree until we reach
 	// the node to be deleted, locking hand over hand
-	Node* prev = NULL;
-	Node* cur = tree->root;
+	FGT_Node* prev = NULL;
+	FGT_Node* cur = tree->root;
 	cur->lock.lock();
 	while (cur) {
 		if (key < cur->key) {
@@ -179,7 +179,7 @@ void deleteNode(Tree* tree, int key)
 
 	// If one of the children is empty, replace node with non-empty child
 	if (cur->left == NULL || cur->right == NULL) {
-		Node* temp = (cur->left == NULL) ? cur->right : cur->left;
+		FGT_Node* temp = (cur->left == NULL) ? cur->right : cur->left;
 		if (prev == NULL) {
 			// cur is root 
 			tree->root = temp;
@@ -196,10 +196,10 @@ void deleteNode(Tree* tree, int key)
 	// If both children exist
 	else {
 		// TODO: could potentially unlock prev here
-		Node* succParent = cur;
+		FGT_Node* succParent = cur;
 
 		// Find successor
-		Node* succ = cur->right;
+		FGT_Node* succ = cur->right;
 		succ->lock.lock();
 		while (succ->left != NULL) {
 			if (succParent != cur) succParent->lock.unlock();

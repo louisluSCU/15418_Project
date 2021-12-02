@@ -3,18 +3,18 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-struct Node {
+struct FGT_Node {
 	int key;
-	struct Node *left, *right;
+	struct FGT_Node *left, *right;
 	mutex lock;
 };
 
 struct Tree {
-	struct Node *root;
+	struct FGT_Node *root;
 	mutex lock;
 };
 
-Node* search(Node* root, int key);
+FGT_Node* search(FGT_Node* root, int key);
 
 void insert(Tree* tree, int key);
 
