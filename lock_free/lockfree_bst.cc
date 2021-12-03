@@ -34,7 +34,7 @@ Node::Node() : key(0) {
     op = NULL;
     left = NULL;
     right = NULL;
-    op = SET_FLAG(op, 0);
+    op = SET_FLAG(op, NONE);
     left = SET_NULL(left);
     right = SET_NULL(right);
 }
@@ -43,7 +43,7 @@ Node::Node(int k) : key(k) {
     op = NULL;
     left = NULL;
     right = NULL;
-    op = SET_FLAG(op, 0);
+    op = SET_FLAG(op, NONE);
     left = SET_NULL(left);
     right = SET_NULL(right);
 }
@@ -72,6 +72,7 @@ int BST::find(int k, Node*& parent, Operation*& parent_op, Node*& curr,
     int result, current_key;
     Node* next, *last_right;
     Operation* last_right_op;
+    bool is_occupied = false;
 
     while (true) {
         result = NOTFOUND_R;
@@ -98,7 +99,8 @@ int BST::find(int k, Node*& parent, Operation*& parent_op, Node*& curr,
             // Current search node is occupied
             if (GET_FLAG(curr_op) != NONE) {
                 help(parent, parent_op, curr, curr_op);
-                continue;
+                is_occupied = true;
+                break;
             }
             current_key = curr->key;
             if (k < current_key) {
@@ -117,12 +119,16 @@ int BST::find(int k, Node*& parent, Operation*& parent_op, Node*& curr,
             }
         }
 
-        // Make sure no update on last right node that might invalidate current search result
-        if (result == FOUND || last_right_op == last_right->op) break;
-        // Make sure curr has not been changed between reading op and reading its key
-        if (curr_op == curr->op) break;
-    }
+        // Search node is occupied, retry
+        if (is_occupied) {
+            is_occupied = false;
+            continue;
+        }
 
+        // 1. Make sure no update on last right node that might invalidate current search result
+        // 2. Make sure curr has not been changed between reading op and reading its key
+        if ((result == FOUND || last_right_op == last_right->op) && curr_op == curr->op) break;
+    }
     return result;
 }
 
@@ -205,7 +211,7 @@ void BST::helpMarked(Node* parent, Operation* parent_op, Node* curr) {
     }
     else tmp = curr->left;
 
-    bool is_left = curr == parent->left;
+    bool is_left = (curr == parent->left);
     Operation* cas_op = new ChildCASOp(is_left, curr, tmp);
 
     // Physical removal by updating parent node
@@ -218,7 +224,7 @@ void BST::helpMarked(Node* parent, Operation* parent_op, Node* curr) {
 void BST::helpChildCAS(Operation* op, Node* dest) {
     ChildCASOp* child_op = (ChildCASOp *) op;
     Node* volatile* addr = child_op->is_left ? &dest->left : &dest->right;
-    // Update child node value
+    // Update parent node child pointer
     CAS(addr, child_op->expected, child_op->update);
     // Update parent operation field
     CAS(&dest->op, SET_FLAG(op, CHILDCAS), SET_FLAG(op, NONE));
@@ -235,7 +241,7 @@ bool BST::helpRelocate(Operation* op, Node* parent, Operation* parent_op, Node* 
         CAS(&relo_op->dest->op, relo_op->dest_op, SET_FLAG(relo_op, RELOCATE));
         Operation* seen_op = relo_op->dest->op;
         // Either this thread start removal or other thread start removal
-        if ((seen_op == relo_op->dest_op) || (seen_op == SET_FLAG(op, RELOCATE))) {
+        if ((seen_op == relo_op->dest_op) || (seen_op == SET_FLAG(relo_op, RELOCATE))) {
             CAS(&relo_op->state, ONGOING, SUCCEED);
             state = SUCCEED;
         }
@@ -248,17 +254,19 @@ bool BST::helpRelocate(Operation* op, Node* parent, Operation* parent_op, Node* 
         // Key removal
         CAS(&relo_op->dest->key, relo_op->key_to_remove, relo_op->key_to_put);
         // Op update
-        CAS(&relo_op->dest->op, SET_FLAG(op, RELOCATE), SET_FLAG(op, NONE));
+        CAS(&relo_op->dest->op, SET_FLAG(relo_op, RELOCATE), SET_FLAG(relo_op, NONE));
     }
 
     // Clean up the replace node
     result = (state == SUCCEED);
     // In case relocated is called from find
     if (relo_op->dest == curr) return result;
+
     CAS(&curr->op, SET_FLAG(relo_op, RELOCATE), SET_FLAG(relo_op, result ? TOMB : NONE));
     // If success, mark and remove the replace node
     if (result) {
         if (relo_op->dest == parent) parent_op = SET_FLAG(relo_op, NONE);
+        // Since next largest is guaranteed to be leaf node, it's ok to remove it with helpMared
         helpMarked(parent, parent_op, curr);
     }
     return result;
