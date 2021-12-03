@@ -1,26 +1,28 @@
 #include <bits/stdc++.h>
 #include "fine_grain/fine_grain.h"
+#include "abstract_bst.h"
+
 using namespace std;
 using namespace std::chrono;
 
-void insertRange(FGBST* t, int low, int high) {
+void insertRange(ABST* t, int low, int high) {
     for (int i = low; i < high; i++) {
         t->add(i);
     }
 }
 
-void deleteRange(FGBST* t, int low, int high) {
+void deleteRange(ABST* t, int low, int high) {
     for (int i = low; i < high; i++) {
         t->remove(i);
     }
 }
 
-void insertDeleteRange(FGBST* t, int low, int high) {
+void insertDeleteRange(ABST* t, int low, int high) {
     insertRange(t, low, high);
     deleteRange(t, low, high);
 }
 
-void testInsertDelete(FGBST* t, int numThreads, int threadCapacity) {
+void testInsertDelete(ABST* t, int numThreads, int threadCapacity) {
     vector<thread> tvec;
     for (int i = 0; i < numThreads; i++) {
         tvec.push_back(thread(insertDeleteRange, t, i * threadCapacity, (i+1) * threadCapacity));

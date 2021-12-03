@@ -1,9 +1,10 @@
 #ifndef FINE_GRAIN_H
 #define FINE_GRAIN_H
 #include <bits/stdc++.h>
+#include "test/abstract_bst.h"
 using namespace std;
 
-class FGBST {
+class FGBST: public ABST {
 	struct Node {
 		int key;
 		struct Node *left, *right;

@@ -1,9 +1,10 @@
 #ifndef COARSE_GRAIN_H
 #define COARSE_GRAIN_H
 #include <bits/stdc++.h>
+#include "test/abstract_bst.h"
 using namespace std;
 
-class CGBST {
+class CGBST: public ABST {
 	struct Node {
 		int key;
 		struct Node *left, *right;
