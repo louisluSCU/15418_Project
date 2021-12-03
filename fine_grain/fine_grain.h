@@ -3,26 +3,24 @@
 #include <bits/stdc++.h>
 using namespace std;
 
-struct FGT_Node {
-	int key;
-	struct FGT_Node *left, *right;
-	mutex lock;
+class FGBST {
+	struct Node {
+		int key;
+		struct Node *left, *right;
+		mutex lock;
+	};
+
+	private:
+		Node* root;
+		mutex lock;
+		Node* newNode(int k);
+		void freeTreeHelper(Node* root);
+
+	public:
+		FGBST();
+		~FGBST();
+		bool contains(int k);
+		bool add(int k);
+		bool remove(int k);
 };
-
-struct Tree {
-	struct FGT_Node *root;
-	mutex lock;
-};
-
-FGT_Node* search(FGT_Node* root, int key);
-
-void insert(Tree* tree, int key);
-
-void deleteNode(Tree* tree, int key);
-
-bool contains(Tree* tree, int key);
-
-Tree* newTree();
-
-void freeTree(Tree* t);
 #endif
