@@ -1,7 +1,7 @@
 APP_NAME = correctness_test performance_test
-CORRECTNESS_OBJS = fine_grain/fine_grain.o lock_free/lockfree_bst.o test/correctness_test.o
-PERFORMANCE_OBJS = fine_grain/fine_grain.o lock_free/lockfree_bst.o test/performance_test.o
-CXX = g++ -m64 -std=c++11
+CORRECTNESS_OBJS = fine_grain/fine_grain.o coarse_grain/coarse_grain.o lock_free/lockfree_bst.o test/correctness_test.o 
+PERFORMANCE_OBJS = fine_grain/fine_grain.o coarse_grain/coarse_grain.o lock_free/lockfree_bst.o test/performance_test.o
+CXX = g++-10 -m64 -std=c++11
 CXXFLAGS = -I. -O3 -Wall -pthread
 
 default: $(APP_NAME)
@@ -16,6 +16,9 @@ performance_test: $(PERFORMANCE_OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $(PERFORMANCE_OBJS)
 
 fine_grain/%.o: fine_grain/%.cpp
+	$(CXX) $< $(CXXFLAGS) -c -o $@
+
+coarse_grain/%.o: coarse_grain/%.cpp
 	$(CXX) $< $(CXXFLAGS) -c -o $@
 
 lock_free/%.o: lock_free/%.cpp

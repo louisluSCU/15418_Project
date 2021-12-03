@@ -1,30 +1,36 @@
 #include "fine_grain/fine_grain.h"
 #include "lock_free/lockfree_bst.h"
+#include "coarse_grain/coarse_grain.h"
 
 using namespace std;
 
-#define IS_BST 0
+#define IS_BST 2
 
 Tree *fgt;
 BST *bst;
+CGBST *cgbst;
 
 void test_init_tree() {
-    if (IS_BST) bst = new BST();
+    if (IS_BST == 1) bst = new BST();
+	else if (IS_BST == 2) cgbst = new CGBST();
     else fgt = newTree();
 }
 
 void test_clear_tree() {
-    if (IS_BST) delete bst;
+    if (IS_BST == 1) delete bst;
+	else if (IS_BST == 2) delete cgbst;
     else freeTree(fgt);
 }
 
 bool test_search_tree(int k) {
-    if (IS_BST) return bst->contains(k);
+    if (IS_BST == 1) return bst->contains(k);
+	else if (IS_BST == 2) return cgbst->contains(k);
     else return search(fgt->root, k) != NULL;
 }
 
 bool test_insert_tree(int k) {
-    if (IS_BST) return bst->add(k);
+    if (IS_BST == 1) return bst->add(k);
+	else if (IS_BST == 2) return cgbst->add(k);
     else {
         insert(fgt, k);
         return true;
@@ -32,7 +38,8 @@ bool test_insert_tree(int k) {
 }
 
 bool test_delete_tree(int k) {
-    if (IS_BST) return bst->remove(k);
+    if (IS_BST == 1) return bst->remove(k);
+	else if (IS_BST == 2) return cgbst->remove(k);
     else {
         deleteNode(fgt, k);
         return true;
