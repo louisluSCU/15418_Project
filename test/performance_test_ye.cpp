@@ -1,11 +1,14 @@
 #include <bits/stdc++.h>
+#include <algorithm>
+#include <random>
+
 #include "fine_grain/fine_grain.h"
 #include "lock_free/lockfree_bst.h"
 #include "coarse_grain/coarse_grain.h"
 using namespace std;
 using namespace std::chrono;
 
-#define IS_BST 2
+#define IS_BST 1
 
 FGBST *fgt;
 BST *bst;
@@ -53,6 +56,18 @@ void deleteRange(int low, int high) {
     }
 }
 
+void insertRangeIdx(int low, int high, vector<int> nums) {
+    for (int i = low; i < high; i++) {
+        test_insert_tree(nums[i]);
+    }
+}
+
+void deleteRangeIdx(int low, int high, vector<int> nums) {
+    for (int i = low; i < high; i++) {
+        test_delete_tree(nums[i]);
+    }
+}
+
 void insertDeleteRange(int low, int high) {
     insertRange(low, high);
     deleteRange(low, high);
@@ -70,6 +85,11 @@ void insertDeleteBatch(int low, int high, int batchSize) {
         insertRange(low + i * batchSize, endIdx);
         deleteRange(low + i * batchSize, endIdx);
     }
+}
+
+void insertDeleteRandomRange(int low, int high, vector<int> nums) {
+    insertRangeIdx(low, high, nums);
+    deleteRangeIdx(low, high, nums);
 }
 
 void testInsertDeleteBatch(int numThreads, int threadCapacity, int batchSize) {
@@ -92,11 +112,30 @@ void testInsertDeleteRange(int numThreads, int threadCapacity) {
     }
 }
 
+void testInsertDeleteRandomRange(int numThreads, int threadCapacity) {
+    vector<thread> tvec;
+    vector<int> nums;
+    for (int i = 0; i < numThreads * threadCapacity; i++) {
+        nums.push_back(i);
+    }
+    auto rng = std::default_random_engine {};
+    std::shuffle(nums.begin(), nums.end(), rng);
+
+    for (int i = 0; i < numThreads; i++) {
+        tvec.push_back(thread(insertDeleteRandomRange, i * threadCapacity, (i+1) * threadCapacity, nums));
+    }
+    for (int i = 0; i < numThreads; i++) {
+        tvec[i].join();
+    }
+}
+
 int main(int argc, char const *argv[])
 {
     /* code */
     int capacity = 10000;
     vector<int> numThreads = {1, 4, 16, 64, 128};
+
+    // insert delete in range
     for (int numThread: numThreads) {
         test_init_tree();
         auto start = high_resolution_clock::now();
@@ -106,6 +145,8 @@ int main(int argc, char const *argv[])
         printf("InsertDeleteRange for %d capacity and %d threads: %ld milliseconds\n", capacity, numThread, duration.count());
         test_clear_tree();
     }
+
+    // insert delete in batch
     for (int numThread: numThreads) {
         test_init_tree();
         auto start = high_resolution_clock::now();
@@ -113,6 +154,17 @@ int main(int argc, char const *argv[])
         auto stop = high_resolution_clock::now();
         auto duration = duration_cast<milliseconds>(stop - start);
         printf("InsertDeleteBatch for %d capacity and %d threads: %ld milliseconds\n", capacity, numThread, duration.count());
+        test_clear_tree();
+    }
+
+    // random insert delete
+    for (int numThread: numThreads) {
+        test_init_tree();
+        auto start = high_resolution_clock::now();
+        testInsertDeleteRandomRange(numThread, capacity);
+        auto stop = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(stop - start);
+        printf("InsertDeleteRandom for %d capacity and %d threads: %ld milliseconds\n", capacity, numThread, duration.count());
         test_clear_tree();
     }
     return 0;
