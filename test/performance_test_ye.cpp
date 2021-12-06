@@ -8,11 +8,13 @@
 using namespace std;
 using namespace std::chrono;
 
-#define IS_BST 1
+#define IS_BST 2
 
 FGBST *fgt;
 BST *bst;
 CGBST *cgbst;
+
+vector<int> numThreads = {1, 4, 16, 64, 128};
 
 void test_init_tree() {
     if (IS_BST == 1) bst = new BST();
@@ -149,11 +151,7 @@ void testInsertDeleteOverlapRange(int numThreads, int threadCapacity, double ove
     }
 }
 
-int main(int argc, char const *argv[])
-{
-    /* code */
-    int capacity = 10000;
-    vector<int> numThreads = {1, 4, 16, 64, 128};
+void writeIntensiveTest(int capacity) {
 
     // insert delete in range
     for (int numThread: numThreads) {
@@ -197,6 +195,58 @@ int main(int argc, char const *argv[])
         auto duration = duration_cast<milliseconds>(stop - start);
         printf("InsertDeleteRandomOverlapping for %d capacity and %d threads: %ld milliseconds\n", capacity, numThread, duration.count());
         test_clear_tree();
+    }
+
+}
+
+void readIntensiveThread(int capacity, vector<int> nodes) {
+    // 9% insertion, 1% deletion, 90% find
+    for (int i = 0; i < capacity; i++) {
+        double r = (double) rand() / RAND_MAX;
+        if (r <= 0.01) test_delete_tree(nodes[i]);
+        else if (r > 0.01 && r <= 0.1) test_insert_tree(nodes[i] + capacity);
+        else test_search_tree(nodes[i]);
+    }
+}
+
+void readIntensiveTest(int capacity, int numThreads) {
+    test_init_tree();
+    vector<int> nodes;
+    vector<thread> threads;
+    srand(time(NULL));
+
+    for (int i = 0; i < capacity; i++) {
+        nodes.push_back(i);
+    }
+    auto rng = std::default_random_engine {};
+    std::shuffle(nodes.begin(), nodes.end(), rng);
+
+    for (size_t i = 0; i < nodes.size(); i++) test_insert_tree(i);
+
+    for (int i = 0; i < numThreads; i++) {
+        threads.push_back(thread(readIntensiveThread, capacity, nodes));
+    }
+    for (int i = 0; i < numThreads; i++) {
+        threads[i].join();
+    }
+
+    test_clear_tree();
+}
+
+int main(int argc, char const *argv[])
+{
+    // Write intensive test
+    int capacity = 10000;
+    // writeIntensiveTest(capacity);
+
+    // Read intensive test
+    int treeSize = 100000;
+    for (int threadNum : numThreads) {
+        auto start = high_resolution_clock::now();
+        readIntensiveTest(treeSize, threadNum);
+        auto stop = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(stop - start);
+        printf("Read intensive test for %d capacity and %d threads: %ld milliseconds\n", capacity, threadNum, duration.count());
     }
 
     return 0;
