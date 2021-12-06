@@ -129,6 +129,26 @@ void testInsertDeleteRandomRange(int numThreads, int threadCapacity) {
     }
 }
 
+void testInsertDeleteOverlapRange(int numThreads, int threadCapacity, double overlapPercent) {
+    int totalNum = numThreads * threadCapacity * (1 - overlapPercent) + threadCapacity * overlapPercent;
+    vector<thread> tvec;
+    vector<int> nums;
+
+    for (int i = 0; i < totalNum; i++) {
+        nums.push_back(i);
+    }
+    auto rng = std::default_random_engine {};
+    std::shuffle(nums.begin(), nums.end(), rng);
+
+    for (int i = 0; i < numThreads; i++) {
+        int low = i * threadCapacity * (1 - overlapPercent);
+        tvec.push_back(thread(insertDeleteRandomRange, low, low + threadCapacity, nums));
+    }
+    for (int i = 0; i < numThreads; i++) {
+        tvec[i].join();
+    }
+}
+
 int main(int argc, char const *argv[])
 {
     /* code */
@@ -167,5 +187,17 @@ int main(int argc, char const *argv[])
         printf("InsertDeleteRandom for %d capacity and %d threads: %ld milliseconds\n", capacity, numThread, duration.count());
         test_clear_tree();
     }
+
+    // random insert delete overlapping range
+    for (int numThread: numThreads) {
+        test_init_tree();
+        auto start = high_resolution_clock::now();
+        testInsertDeleteOverlapRange(numThread, capacity, 0);
+        auto stop = high_resolution_clock::now();
+        auto duration = duration_cast<milliseconds>(stop - start);
+        printf("InsertDeleteRandomOverlapping for %d capacity and %d threads: %ld milliseconds\n", capacity, numThread, duration.count());
+        test_clear_tree();
+    }
+
     return 0;
 }
