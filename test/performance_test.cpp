@@ -180,7 +180,7 @@ void testRandomInsert(int numThreads, int threadCapacity) {
     concurrentInsertRangeVec(threadCapacity, numThreads, v);
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
-    printf("random insert for %d capacity and %d threads: %ld milliseconds\n", threadCapacity, numThreads, duration.count());
+    printf("random insert for %d capacity and %d threads: %ld milliseconds, %ld operations per millisecond\n", threadCapacity, numThreads, duration.count(), threadCapacity * numThreads / max((int64_t)1, duration.count()));
     test_clear_tree();
 }
 
@@ -191,7 +191,7 @@ void testImbalanceInsert(int numThreads, int threadCapacity) {
     concurrentInsertRange(threadCapacity, numThreads);
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
-    printf("Imbalanced insert for %d capacity and %d threads: %ld milliseconds\n", threadCapacity, numThreads, duration.count());
+    printf("Imbalanced insert for %d capacity and %d threads: %ld milliseconds, %ld operations per millisecond\n", threadCapacity, numThreads, duration.count(), threadCapacity * numThreads / max((int64_t)1, duration.count()));
     test_clear_tree();
 }
 
@@ -206,7 +206,7 @@ void testRandomDelete(int numThreads, int threadCapacity) {
     concurrentInsertRangeVec(threadCapacity, numThreads, v);
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
-    printf("Balanced random delete for %d capacity and %d threads: %ld milliseconds\n", threadCapacity, numThreads, duration.count());
+    printf("Balanced random delete for %d capacity and %d threads: %ld milliseconds, %ld operations per millisecond\n", threadCapacity, numThreads, duration.count(), threadCapacity * numThreads / max((int64_t)1, duration.count()));
     test_clear_tree();
 }
 
@@ -220,7 +220,7 @@ void testImbalancRandDelete(int numThreads, int threadCapacity) {
     concurrentDeleteRangeVec(threadCapacity, numThreads, v);
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
-    printf("Imbalanced random delete for %d capacity and %d threads: %ld milliseconds\n", threadCapacity, numThreads, duration.count());
+    printf("Imbalanced random delete for %d capacity and %d threads: %ld milliseconds, %ld operations per millisecond\n", threadCapacity, numThreads, duration.count(), threadCapacity * numThreads / max((int64_t)1, duration.count()));
     test_clear_tree();
 }
 
@@ -235,7 +235,7 @@ void testRandomFind(int numThreads, int threadCapacity) {
     concurrentFindRangeVec(threadCapacity, numThreads, v);
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
-    printf("Balanced random find for %d capacity and %d threads: %ld milliseconds\n", threadCapacity, numThreads, duration.count());
+    printf("Balanced random fine for %d capacity and %d threads: %ld milliseconds, %ld operations per millisecond\n", threadCapacity, numThreads, duration.count(), threadCapacity * numThreads / max((int64_t)1, duration.count()));
     test_clear_tree();
 }
 
@@ -250,7 +250,7 @@ void testImbalanceRandFind(int numThreads, int threadCapacity) {
     concurrentFindRangeVec(threadCapacity, numThreads, v);
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
-    printf("Imbalanced random find for %d capacity and %d threads: %ld milliseconds\n", threadCapacity, numThreads, duration.count());
+    printf("Imbalanced random find for %d capacity and %d threads: %ld milliseconds, %ld operations per millisecond\n", threadCapacity, numThreads, duration.count(), threadCapacity * numThreads / max((int64_t)1, duration.count()));
     test_clear_tree();
 }
 
@@ -315,10 +315,13 @@ int main(int argc, char const *argv[])
         test_print_tree();
         for (int capacity: capacities) {
             for (int numThread: numThreads) {
-                testBalancedSeqDelete(numThread, capacity);
+                testRandomInsert(numThread, capacity);
             }
             for (int numThread: numThreads) {
-                testBalancedSeqFind(numThread, capacity);
+                testRandomDelete(numThread, capacity);
+            }
+            for (int numThread: numThreads) {
+                testRandomFind(numThread, capacity);
             }
         }
     }
