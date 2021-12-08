@@ -151,7 +151,7 @@ void testInsertDeleteOverlapRange(int numThreads, int threadCapacity, double ove
     }
 }
 
-void writeIntensiveTest(int capacity) {
+void writeTest(int capacity) {
 
     // insert delete in range
     for (int numThread: numThreads) {
@@ -199,9 +199,46 @@ void writeIntensiveTest(int capacity) {
 
 }
 
+void writeIntensiveThread(int capacity, vector<int> nodes) {
+    // 50% insertion, 50% deletion
+    for (int i = 0; i < capacity && i < 10000; i++) {
+        double r = (double) rand() / RAND_MAX;
+        if (r <= 0.5) test_delete_tree(nodes[i]);
+        else test_insert_tree(nodes[i] + capacity);
+    }
+}
+
+void writeIntensiveTest(int capacity, int numThreads) {
+    test_init_tree();
+    vector<int> nodes;
+    vector<thread> threads;
+    srand(time(NULL));
+
+    for (int i = 0; i < capacity; i++) {
+        nodes.push_back(i);
+    }
+    auto rng = std::default_random_engine {};
+    std::shuffle(nodes.begin(), nodes.end(), rng);
+
+    for (size_t i = 0; i < nodes.size(); i++) test_insert_tree(i);
+
+    auto start = high_resolution_clock::now();
+    for (int i = 0; i < numThreads; i++) {
+        threads.push_back(thread(writeIntensiveThread, capacity, nodes));
+    }
+    for (int i = 0; i < numThreads; i++) {
+        threads[i].join();
+    }
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(stop - start);
+    printf("Write intensive test for %d capacity and %d threads: %ld milliseconds, %f op/milisec\n", capacity, numThreads, duration.count(), (double) (capacity * numThreads) / duration.count());
+
+    test_clear_tree();
+}
+
 void readIntensiveThread(int capacity, vector<int> nodes) {
     // 9% insertion, 1% deletion, 90% find
-    for (int i = 0; i < capacity; i++) {
+    for (int i = 0; i < capacity && i < 10000; i++) {
         double r = (double) rand() / RAND_MAX;
         if (r <= 0.01) test_delete_tree(nodes[i]);
         else if (r > 0.01 && r <= 0.1) test_insert_tree(nodes[i] + capacity);
@@ -223,19 +260,23 @@ void readIntensiveTest(int capacity, int numThreads) {
 
     for (size_t i = 0; i < nodes.size(); i++) test_insert_tree(i);
 
+    auto start = high_resolution_clock::now();
     for (int i = 0; i < numThreads; i++) {
         threads.push_back(thread(readIntensiveThread, capacity, nodes));
     }
     for (int i = 0; i < numThreads; i++) {
         threads[i].join();
     }
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(stop - start);
+    printf("Read intensive test for %d capacity and %d threads: %ld milliseconds, %f op/milisec\n", capacity, numThreads, duration.count(), (double) (capacity * numThreads) / duration.count());
 
     test_clear_tree();
 }
 
 void balancedThread(int capacity, vector<int> nodes) {
     // 20% insertion, 10% deletion, 70% find
-    for (int i = 0; i < capacity; i++) {
+    for (int i = 0; i < capacity && i < 10000; i++) {
         double r = (double) rand() / RAND_MAX;
         if (r <= 0.2) test_delete_tree(nodes[i]);
         else if (r > 0.2 && r <= 0.3) test_insert_tree(nodes[i] + capacity);
@@ -257,12 +298,16 @@ void balancedTest(int capacity, int numThreads) {
 
     for (size_t i = 0; i < nodes.size(); i++) test_insert_tree(i);
 
+    auto start = high_resolution_clock::now();
     for (int i = 0; i < numThreads; i++) {
         threads.push_back(thread(balancedThread, capacity, nodes));
     }
     for (int i = 0; i < numThreads; i++) {
         threads[i].join();
     }
+    auto stop = high_resolution_clock::now();
+    auto duration = duration_cast<milliseconds>(stop - start);
+    printf("Balanced intensive test for %d capacity and %d threads: %ld milliseconds, %f op/milisec\n", capacity, numThreads, duration.count(), (double) (capacity * numThreads) / duration.count());
 
     test_clear_tree();
 }
@@ -270,26 +315,19 @@ void balancedTest(int capacity, int numThreads) {
 int main(int argc, char const *argv[])
 {
     // Write intensive test
-    int capacity = 10000;
-    // writeIntensiveTest(capacity);
+    int treeSize = 100000;
+    for (int threadNum: numThreads) {
+        writeIntensiveTest(treeSize, threadNum);
+    }
 
     // Read intensive test
-    int treeSize = 100000;
     for (int threadNum : numThreads) {
-        auto start = high_resolution_clock::now();
         readIntensiveTest(treeSize, threadNum);
-        auto stop = high_resolution_clock::now();
-        auto duration = duration_cast<milliseconds>(stop - start);
-        printf("Read intensive test for %d capacity and %d threads: %ld milliseconds\n", treeSize, threadNum, duration.count());
     }
 
     // Balanced test
     for (int threadNum : numThreads) {
-        auto start = high_resolution_clock::now();
         balancedTest(treeSize, threadNum);
-        auto stop = high_resolution_clock::now();
-        auto duration = duration_cast<milliseconds>(stop - start);
-        printf("Balanced test for %d capacity and %d threads: %ld milliseconds\n", treeSize, threadNum, duration.count());
     }
 
     return 0;
