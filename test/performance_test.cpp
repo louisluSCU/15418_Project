@@ -53,6 +53,23 @@ void insertRange(int low, int high) {
     }
 }
 
+void deleteRange(int low, int high) {
+    for (int i = low; i < high; i++) {
+        test_delete_tree(i);
+    }
+}
+
+void findRange(int low, int high) {
+    for (int i = low; i < high; i++) {
+        test_search_tree(i);
+    }
+}
+
+void insertDeleteRange(int low, int high) {
+    insertRange(low, high);
+    deleteRange(low, high);
+}
+
 void insertRangeVec(int low, int high, vector<int> v) {
     for (int i = low; i < high; i++) {
         test_insert_tree(v[i]);
@@ -71,15 +88,73 @@ void findRangeVec(int low, int high, vector<int> v) {
     }
 }
 
-void deleteRange(int low, int high) {
-    for (int i = low; i < high; i++) {
-        test_delete_tree(i);
+void concurrentInsertRange(int capacity, int numThreads) {
+    vector<thread> tvec;
+    for (int i = 0; i < numThreads; i++) {
+        tvec.push_back(thread(insertRange, i * capacity, (i+1) * capacity));
+    }
+    for (int i = 0; i < numThreads; i++) {
+        tvec[i].join();
     }
 }
 
-void insertDeleteRange(int low, int high) {
-    insertRange(low, high);
-    deleteRange(low, high);
+void concurrentDeleteRange(int capacity, int numThreads) {
+    vector<thread> tvec;
+    for (int i = 0; i < numThreads; i++) {
+        tvec.push_back(thread(insertRange, i * capacity, (i+1) * capacity));
+    }
+    for (int i = 0; i < numThreads; i++) {
+        tvec[i].join();
+    }
+}
+
+void concurrentFindRange(int capacity, int numThreads) {
+    vector<thread> tvec;
+    for (int i = 0; i < numThreads; i++) {
+        tvec.push_back(thread(findRange, i * capacity, (i+1) * capacity));
+    }
+    for (int i = 0; i < numThreads; i++) {
+        tvec[i].join();
+    }
+}
+
+void concurrentInsertRangeVec(int capacity, int numThreads, vector<int> &v) {
+    vector<thread> tvec;
+    for (int i = 0; i < numThreads; i++) {
+        tvec.push_back(thread(insertRangeVec, i * capacity, (i+1) * capacity, v));
+    }
+    for (int i = 0; i < numThreads; i++) {
+        tvec[i].join();
+    }
+}
+
+void concurrentDeleteRangeVec(int capacity, int numThreads, vector<int> &v) {
+    vector<thread> tvec;
+    for (int i = 0; i < numThreads; i++) {
+        tvec.push_back(thread(deleteRangeVec, i * capacity, (i+1) * capacity, v));
+    }
+    for (int i = 0; i < numThreads; i++) {
+        tvec[i].join();
+    }
+}
+
+void concurrentFindRangeVec(int capacity, int numThreads, vector<int> &v) {
+    vector<thread> tvec;
+    for (int i = 0; i < numThreads; i++) {
+        tvec.push_back(thread(findRangeVec, i * capacity, (i+1) * capacity, v));
+    }
+    for (int i = 0; i < numThreads; i++) {
+        tvec[i].join();
+    }
+}
+
+vector<int> getRandomRangeVector(int low, int high) {
+    vector<int> v;
+    for (int i = low; i < high; i++) {
+        v.push_back(i);
+    }
+    random_shuffle(v.begin(), v.end());
+    return v;
 }
 
 void testInsertDelete(int numThreads, int threadCapacity) {
@@ -100,36 +175,20 @@ void testInsertDelete(int numThreads, int threadCapacity) {
 
 void testRandomInsert(int numThreads, int threadCapacity) {
     test_init_tree();
-    vector<int> v;
-    vector<thread> tvec;
-    for (int i = 0; i < numThreads * threadCapacity; i++) {
-        v.push_back(i);
-    }
+    vector<int> v = getRandomRangeVector(0, numThreads * threadCapacity);
     auto start = high_resolution_clock::now();
-    random_shuffle(v.begin(), v.end());
-    for (int i = 0; i < numThreads; i++) {
-        tvec.push_back(thread(insertRangeVec, i * threadCapacity, (i+1) * threadCapacity, v));
-    }
-    for (int i = 0; i < numThreads; i++) {
-        tvec[i].join();
-    }
+    concurrentInsertRangeVec(threadCapacity, numThreads, v);
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
     printf("random insert for %d capacity and %d threads: %lld milliseconds\n", threadCapacity, numThreads, duration.count());
     test_clear_tree();
 }
 
-void testSeqInsert(int numThreads, int threadCapacity) {
+void testImbalanceInsert(int numThreads, int threadCapacity) {
     test_init_tree();
     vector<int> v;
-    vector<thread> tvec;
     auto start = high_resolution_clock::now();
-    for (int i = 0; i < numThreads; i++) {
-        tvec.push_back(thread(insertRange, i * threadCapacity, (i+1) * threadCapacity));
-    }
-    for (int i = 0; i < numThreads; i++) {
-        tvec[i].join();
-    }
+    concurrentInsertRange(threadCapacity, numThreads);
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
     printf("Imbalanced insert for %d capacity and %d threads: %lld milliseconds\n", threadCapacity, numThreads, duration.count());
@@ -138,64 +197,27 @@ void testSeqInsert(int numThreads, int threadCapacity) {
 
 void testRandomDelete(int numThreads, int threadCapacity) {
     test_init_tree();
-    vector<int> v;
-    vector<thread> tvec;
-    for (int i = 0; i < numThreads * threadCapacity; i++) {
-        v.push_back(i);
-    }
-    
-    // insert using all threads to reduce test time
-    random_shuffle(v.begin(), v.end());
-    for (int i = 0; i < numThreads; i++) {
-        tvec.push_back(thread(insertRangeVec, i * threadCapacity, (i+1) * threadCapacity, v));
-    }
-    for (int i = 0; i < numThreads; i++) {
-        tvec[i].join();
-    }
-    tvec.clear();
-    // shuffle again so we don't delete in the exact same order we insert
-    random_shuffle(v.begin(), v.end());
+    vector<int> v = getRandomRangeVector(0, numThreads * threadCapacity);
+    concurrentInsertRangeVec(threadCapacity, numThreads, v);
 
     // test
+    random_shuffle(v.begin(), v.end());
     auto start = high_resolution_clock::now();
-    for (int i = 0; i < numThreads; i++) {
-        tvec.push_back(thread(deleteRangeVec, i * threadCapacity, (i+1) * threadCapacity, v));
-    }
-    for (int i = 0; i < numThreads; i++) {
-        tvec[i].join();
-    }
+    concurrentInsertRangeVec(threadCapacity, numThreads, v);
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
     printf("random delete for %d capacity and %d threads: %lld milliseconds\n", threadCapacity, numThreads, duration.count());
     test_clear_tree();
 }
 
-void testSeqDelete(int numThreads, int threadCapacity) {
+void testImbalancRandDelete(int numThreads, int threadCapacity) {
     test_init_tree();
-    vector<int> v;
-    vector<thread> tvec;
-    for (int i = 0; i < numThreads * threadCapacity; i++) {
-        v.push_back(i);
-    }
-    random_shuffle(v.begin(), v.end());
-
-    // insert using all threads to reduce test time
-    for (int i = 0; i < numThreads; i++) {
-        tvec.push_back(thread(insertRange, i * threadCapacity, (i+1) * threadCapacity));
-    }
-    for (int i = 0; i < numThreads; i++) {
-        tvec[i].join();
-    }
-    tvec.clear();
+    vector<int> v = getRandomRangeVector(0, numThreads * threadCapacity);
+    concurrentInsertRange(threadCapacity, numThreads);
 
     // test
     auto start = high_resolution_clock::now();
-    for (int i = 0; i < numThreads; i++) {
-        tvec.push_back(thread(deleteRangeVec, i * threadCapacity, (i+1) * threadCapacity, v));
-    }
-    for (int i = 0; i < numThreads; i++) {
-        tvec[i].join();
-    }
+    concurrentDeleteRangeVec(threadCapacity, numThreads, v);
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
     printf("Imbalanced delete for %d capacity and %d threads: %lld milliseconds\n", threadCapacity, numThreads, duration.count());
@@ -204,64 +226,28 @@ void testSeqDelete(int numThreads, int threadCapacity) {
 
 void testRandomFind(int numThreads, int threadCapacity) {
     test_init_tree();
-    vector<int> v;
-    vector<thread> tvec;
-    for (int i = 0; i < numThreads * threadCapacity; i++) {
-        v.push_back(i);
-    }
-    
-    // insert using all threads to reduce test time
-    random_shuffle(v.begin(), v.end());
-    for (int i = 0; i < numThreads; i++) {
-        tvec.push_back(thread(insertRangeVec, i * threadCapacity, (i+1) * threadCapacity, v));
-    }
-    for (int i = 0; i < numThreads; i++) {
-        tvec[i].join();
-    }
-    tvec.clear();
-    // shuffle again so we don't delete in the exact same order we insert
-    random_shuffle(v.begin(), v.end());
+    vector<int> v = getRandomRangeVector(0, numThreads * threadCapacity);
+    concurrentInsertRangeVec(threadCapacity, numThreads, v);
 
     // test
+    random_shuffle(v.begin(), v.end());
     auto start = high_resolution_clock::now();
-    for (int i = 0; i < numThreads; i++) {
-        tvec.push_back(thread(findRangeVec, i * threadCapacity, (i+1) * threadCapacity, v));
-    }
-    for (int i = 0; i < numThreads; i++) {
-        tvec[i].join();
-    }
+    concurrentFindRangeVec(threadCapacity, numThreads, v);
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
     printf("random find for %d capacity and %d threads: %lld milliseconds\n", threadCapacity, numThreads, duration.count());
     test_clear_tree();
 }
 
-void testSeqFind(int numThreads, int threadCapacity) {
+void testImbalanceRandFind(int numThreads, int threadCapacity) {
     test_init_tree();
-    vector<int> v;
-    vector<thread> tvec;
-    for (int i = 0; i < numThreads * threadCapacity; i++) {
-        v.push_back(i);
-    }
-    random_shuffle(v.begin(), v.end());
+    vector<int> v = getRandomRangeVector(0, numThreads * threadCapacity);
 
-    // insert using all threads to reduce test time
-    for (int i = 0; i < numThreads; i++) {
-        tvec.push_back(thread(insertRange, i * threadCapacity, (i+1) * threadCapacity));
-    }
-    for (int i = 0; i < numThreads; i++) {
-        tvec[i].join();
-    }
-    tvec.clear();
+    concurrentInsertRange(threadCapacity, numThreads);
 
     // test
     auto start = high_resolution_clock::now();
-    for (int i = 0; i < numThreads; i++) {
-        tvec.push_back(thread(findRangeVec, i * threadCapacity, (i+1) * threadCapacity, v));
-    }
-    for (int i = 0; i < numThreads; i++) {
-        tvec[i].join();
-    }
+    concurrentFindRangeVec(threadCapacity, numThreads, v);
     auto stop = high_resolution_clock::now();
     auto duration = duration_cast<milliseconds>(stop - start);
     printf("random find for %d capacity and %d threads: %lld milliseconds\n", threadCapacity, numThreads, duration.count());
@@ -279,13 +265,13 @@ int main(int argc, char const *argv[])
         test_print_tree();
         for (int capacity: capacities) {
             for (int numThread: numThreads) {
-                testSeqInsert(numThread, capacity);
+                testImbalanceInsert(numThread, capacity);
             }
             for (int numThread: numThreads) {
-                testSeqDelete(numThread, capacity);
+                testImbalancRandDelete(numThread, capacity);
             }
             for (int numThread: numThreads) {
-                testSeqFind(numThread, capacity);
+                testImbalanceRandFind(numThread, capacity);
             }
         }
     }
