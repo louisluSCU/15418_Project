@@ -6,9 +6,9 @@ The team members are: Ye Lu, Sean Zhou
 ## Project proposal
 You can find our project proposal [here](https://github.com/louisluSCU/15418_Project/edit/gh-pages/project_proposal.pdf)
 
-You can find our milestone report [here](https://github.com/louisluSCU/15418_Project/blob/gh-pages/Project%20milestone%20report.pdf)
+You can find our milestone report [here](https://github.com/louisluSCU/15418_Project/blob/gh-pages/project_milestone_report.pdf)
 
-You can find our **final** report [here](https://github.com/louisluSCU/15418_Project/blob/gh-pages/Project%20final%20report.pdf)
+You can find our **final** report [here](https://github.com/louisluSCU/15418_Project/blob/gh-pages/project_final_report.pdf)
 
 You can find our raw benchmark data and diagrams presented in the final report [here](https://docs.google.com/spreadsheets/d/15n7qO4Enw1ZS1Y6OX1k88FiBxnOExvpw6fQY9prH7Sw/edit?usp=sharing) in google sheet
 
