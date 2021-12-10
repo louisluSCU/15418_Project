@@ -1,4 +1,4 @@
-// C++ program to implement optimized delete in BST (Sequential Base Code from GeeksForGeeks 
+// (Sequential Base Code from GeeksForGeeks 
 // https://www.geeksforgeeks.org/binary-search-tree-set-1-search-and-insertion/?ref=lbp).
 #include <bits/stdc++.h>
 #include "coarse_grain.h"
@@ -57,7 +57,7 @@ bool CGBST::contains(int key) {
 } 
 
 /* A utility function to insert a new node with given key in
-* BST (Concurrent by fine-grained locking) */
+* BST */
 bool CGBST::add(int key)
 {
 	/* If the tree is empty, set root to a new node */
@@ -95,7 +95,7 @@ bool CGBST::add(int key)
 }
 
 /* Given a binary search tree and a key, this function
-deletes the key (Concurrent by fine-grained locking) */
+deletes the key */
 bool CGBST::remove(int key)
 {
 	// Empty
@@ -106,7 +106,7 @@ bool CGBST::remove(int key)
 	}
 
 	// recur down tree until we reach
-	// the node to be deleted, locking hand over hand
+	// the node to be deleted
 	Node* prev = NULL;
 	Node* cur = root;
 	while (cur) {
@@ -125,7 +125,6 @@ bool CGBST::remove(int key)
 		lock.unlock();
 		return false; // key not found
 	}
-	// at this point cur is the node to be deleted and prev is its parent, and both cur and prev are locked
 
 	// If one of the children is empty, replace node with non-empty child
 	if (cur->left == NULL || cur->right == NULL) {
@@ -144,7 +143,6 @@ bool CGBST::remove(int key)
 
 	// If both children exist
 	else {
-		// TODO: could potentially unlock prev here
 		Node* succParent = cur;
 
 		// Find successor
@@ -173,7 +171,6 @@ bool CGBST::remove(int key)
 		// Delete Successor
 		delete succ;
 
-		// unlock all 3 (or 2) locks 
 		lock.unlock();
 	}
 	return true;

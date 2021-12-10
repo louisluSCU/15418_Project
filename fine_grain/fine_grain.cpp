@@ -1,4 +1,4 @@
-// C++ program to implement optimized delete in BST (Sequential Base Code from GeeksForGeeks 
+// (Sequential Base Code from GeeksForGeeks 
 // https://www.geeksforgeeks.org/binary-search-tree-set-1-search-and-insertion/?ref=lbp).
 #include <bits/stdc++.h>
 #include "fine_grain.h"
@@ -169,7 +169,6 @@ bool FGBST::remove(int key)
 
 	// If both children exist
 	else {
-		// TODO: could potentially unlock prev here
 		Node* succParent = cur;
 
 		// Find successor
